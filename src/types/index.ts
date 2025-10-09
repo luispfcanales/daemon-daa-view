@@ -2,6 +2,7 @@ export interface IISSite {
   Id: number;
   Name: string;
   State: number;
+  URL: string;
 }
 
 export interface IISResponse {

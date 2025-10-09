@@ -19,7 +19,7 @@ const IISMonitor: React.FC = () => {
     isConnected,
     controlIISSite,
     reconnect,
-    refresh 
+    // refresh 
   } = useIISMonitor();
 
   const activeSitesCount = sites.filter(site => site.State === SITE_STATES.STARTED).length;
@@ -64,14 +64,14 @@ const IISMonitor: React.FC = () => {
             Gestión y monitoreo de sitios web IIS {isConnected && '• ✅ Conectado en tiempo real'}
           </p>
         </div>
-        <Button
+        {/* <Button
           onClick={refresh}
           variant="outline"
           className="flex items-center space-x-2"
         >
           <RefreshCw className="w-4 h-4" />
           <span>Actualizar</span>
-        </Button>
+        </Button> */}
       </div>
 
       {/* Estadísticas */}

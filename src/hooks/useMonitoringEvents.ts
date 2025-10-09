@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { MonitoringControlResponse } from '@/types';
+import type { MonitoringControlResponse,IISSite } from '@/types';
 
 interface MonitoringEvent {
-  type: 'initial_status' | 'monitoring_started' | 'monitoring_stopped' | 'connected';
+  type: 'initial_status' | 'monitoring_started' | 'monitoring_stopped' | 'websites_list' | 'connected';
+
   data: {
+    //para eventos de monitoring
     is_running?: boolean;
     interval?: number;
     started_at?: string;
     message?: string;
+    //para eventos de websites
+    sites?: IISSite[];
+
   };
   timestamp: string;
 }
@@ -16,13 +21,20 @@ interface UseMonitoringEventsReturn {
   monitoringStatus: MonitoringControlResponse | null;
   isConnected: boolean;
   error: string | null;
+  sites: IISSite[];
+  loading: boolean;
   reconnect: () => void;
 }
 
 export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
+  //para monitoreo de eventos de monitoring
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringControlResponse | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  //para monitoreo de eventos de websites
+  const [sites, setSites] = useState<IISSite[]>([]);
+  const [loading, setLoading] = useState(true);
+
   
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
@@ -75,6 +87,8 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
       es.onopen = () => {
         console.log('✅ Conectado al servidor de eventos');
         setIsConnected(true);
+        setError(null);
+        setSites([]);
         reconnectAttemptsRef.current = 0; // Reset contador en conexión exitosa
       };
 
@@ -120,6 +134,10 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
               });
               break;
 
+            case 'websites_list':
+              setSites(eventData.data.sites || []);
+              setLoading(false);
+              break;
             default:
               console.warn('Tipo de evento no manejado:', eventData.type);
           }
@@ -210,6 +228,8 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
     monitoringStatus,
     isConnected,
     error,
+    sites,
+    loading,
     reconnect
   };
 };
