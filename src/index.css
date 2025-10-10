@@ -122,6 +122,30 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.bg-dot-pattern {
+  background-image: radial-gradient(circle, #d1d5db 2px, transparent 2px);
+  background-size: 15px 15px;
+  background-position: 0 0;
+}
+
+/* Alternativa con puntos más sutiles */
+.bg-dot-subtle {
+  background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px);
+  background-size: 25px 25px;
+}
+
+/* Alternativa con puntos más densos */
+.bg-dot-dense {
+  background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
+  background-size: 15px 15px;
+}
+
+/* Alternativa con puntos de color */
+.bg-dot-blue {
+  background-image: radial-gradient(circle, #bfdbfe 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

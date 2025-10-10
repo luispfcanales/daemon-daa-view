@@ -1,7 +1,7 @@
 import React from 'react';
 import type { MonitoringControlResponse } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Power, CheckCircle2, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { monitoringService } from '@/services';
 

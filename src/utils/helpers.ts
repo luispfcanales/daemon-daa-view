@@ -5,18 +5,29 @@ export const formatDuration = (duration: string): string => {
 
 export const getSiteStateLabel = (state: number): string => {
   switch (state) {
-    case 3: return 'Detenido';
-    case 2: return 'Iniciando';
-    case 1: return 'Ejecutándose';
-    default: return 'Desconocido';
+    case 3: return 'Stopped';
+    case 2: return 'Stopping';
+    case 1: return 'Started';
+    case 0: return 'starting';
+    default: return 'Unknown';
   }
 };
 
-export const getSiteStateVariant = (state: number): "default" | "secondary" | "destructive" | "outline" => {
+export const getSiteStateNumber = (state: string): number => {
   switch (state) {
-    case 1: return 'destructive';
-    case 2: return 'secondary';
-    case 3: return 'default';
-    default: return 'outline';
+    case 'Stopped': return 3;
+    case 'Stopping': return 2;
+    case 'Started': return 1;
+    case 'starting': return 0;
+    default: return -1;
+  }
+};
+
+export const getSiteStateVariant = (state: number): string => {
+  switch (state) {
+    case 1: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    case 2: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    case 3: return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   }
 };

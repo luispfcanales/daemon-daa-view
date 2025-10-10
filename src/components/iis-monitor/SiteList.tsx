@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import type { IISSite } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { 
   Play, 
   Square, 
@@ -12,7 +9,9 @@ import {
   Filter,
   Grid,
   List,
-  Server
+  Server,
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 import { getSiteStateLabel, getSiteStateVariant } from '@/utils/helpers';
 import { SITE_STATES } from '@/utils/constant';
@@ -22,12 +21,56 @@ interface SiteListProps {
   onSiteControl: (siteName: string, action: 'start' | 'stop' | 'restart') => void;
 }
 
+
+const URLList: React.FC<{ urlString: string }> = ({ urlString }) => {
+  const urls = urlString.split(',').map(url => url.trim()).filter(url => url);
+  
+  if (urls.length === 0) return null;
+  
+  return (
+    <div className="space-y-1">
+      {urls.map((url, index) => (
+        <div key={index} className="flex items-center space-x-2 text-sm">
+          <Link className="w-3.5 h-3.5 flex-shrink-0 text-blue-500" />
+          <a 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="hover:text-blue-600 dark:hover:text-blue-400 truncate font-mono text-xs group flex items-center space-x-1"
+            title={`Abrir ${url}`}
+          >
+            <span className="truncate">{url}</span>
+            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+          </a>
+        </div>
+      ))}
+    </div>
+  );
+};
 const SiteList: React.FC<SiteListProps> = ({ sites, onSiteControl }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [loadingSites, setLoadingSites] = useState<Set<string>>(new Set());
 
-  // Filtrar sitios basado en búsqueda y estado
+  const handleSiteControl = async (siteName: string, action: 'start' | 'stop' | 'restart') => {
+    setLoadingSites(prev => new Set(prev).add(siteName));
+    
+    try {
+      await onSiteControl(siteName, action);
+    } finally {
+      setTimeout(() => {
+        setLoadingSites(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(siteName);
+          return newSet;
+        });
+      }, 500);
+    }
+  };
+
+  const isSiteLoading = (siteName: string) => loadingSites.has(siteName);
+
   const filteredSites = sites.filter(site => {
     const matchesSearch = site.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          site.URL.toLowerCase().includes(searchTerm.toLowerCase());
@@ -39,230 +82,294 @@ const SiteList: React.FC<SiteListProps> = ({ sites, onSiteControl }) => {
   });
 
   return (
-    <div className="space-y-6 p-6 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
 
-      {/* Barra de herramientas */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-        {/* Búsqueda */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Buscar sitios por nombre o URL..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4"
-          />
-        </div>
+        {/* Barra de herramientas */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            {/* Búsqueda */}
+            <div className="relative flex-1 max-w-md w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar sitios por nombre o URL..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
 
-        {/* Filtros y vistas */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Filtro por estado */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="text-sm border rounded-md px-3 py-1.5 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-            >
-              <option value="all">Todos los estados</option>
-              <option value="running">En ejecución</option>
-              <option value="stopped">Detenidos</option>
-            </select>
+            {/* Filtros y vistas */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Filtro por estado */}
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600">
+                <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="text-sm bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-300 cursor-pointer"
+                >
+                  <option value="all">Todos los estados</option>
+                  <option value="running">En ejecución</option>
+                  <option value="stopped">Detenidos</option>
+                </select>
+              </div>
+
+              {/* Modo de vista */}
+              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 border border-gray-200 dark:border-gray-600">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition-all ${
+                    viewMode === 'list' 
+                      ? 'bg-white dark:bg-gray-600 shadow-sm' 
+                      : 'hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  title="Vista de lista"
+                >
+                  <List className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md transition-all ${
+                    viewMode === 'grid' 
+                      ? 'bg-white dark:bg-gray-600 shadow-sm' 
+                      : 'hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  title="Vista de cuadrícula"
+                >
+                  <Grid className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Modo de vista */}
-          <div className="flex border rounded-md overflow-hidden">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="h-9 px-3 rounded-none"
-            >
-              <List className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-              className="h-9 px-3 rounded-none"
-            >
-              <Grid className="w-4 h-4" />
-            </Button>
+          {/* Contador de resultados */}
+          {searchTerm && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-semibold text-gray-900 dark:text-white">{filteredSites.length}</span> de{' '}
+                <span className="font-semibold text-gray-900 dark:text-white">{sites.length}</span> sitios coinciden con{' '}
+                <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">"{searchTerm}"</span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Lista de sitios */}
+        {filteredSites.length === 0 ? (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-dashed border-gray-300 dark:border-gray-600 p-12">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+                <Server className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                No se encontraron sitios IIS
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Intenta ajustar los filtros de búsqueda' 
+                  : 'No hay sitios configurados para mostrar'}
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
+        ) : viewMode === 'list' ? (
+          /* Vista de lista */
+          <div className="space-y-3">
+            {filteredSites.map((site) => {
+              const stateLabel = getSiteStateLabel(site.State);
+              const stateVariant = getSiteStateVariant(site.State);
+              const isStopped = site.State === SITE_STATES.STOPPED;
+              const isStarting = site.State === SITE_STATES.STARTING;
+              const isStopping = site.State === SITE_STATES.STOPPING;
+              const isLoading = isSiteLoading(site.Name) || isStarting || isStopping;
 
-      {/* Resultados de búsqueda */}
-      {searchTerm && (
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          {filteredSites.length} de {sites.length} sitios coinciden con "{searchTerm}"
-        </div>
-      )}
-
-      {/* Lista de sitios */}
-      {filteredSites.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed rounded-lg bg-gray-50 dark:bg-gray-800">
-          <Server className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg">
-            No se encontraron sitios IIS
-          </p>
-          <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-            {searchTerm || statusFilter !== 'all' 
-              ? 'Intenta ajustar los filtros de búsqueda' 
-              : 'No hay sitios configurados para mostrar'}
-          </p>
-        </div>
-      ) : viewMode === 'list' ? (
-        /* Vista de lista */
-        <div className="space-y-3">
-          {filteredSites.map((site) => {
-            const stateLabel = getSiteStateLabel(site.State);
-            const stateVariant = getSiteStateVariant(site.State);
-            const isStopped = site.State === SITE_STATES.STOPPED;
-
-            return (
-              <div 
-                key={site.Id} 
-                className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-all bg-white dark:bg-gray-800 group"
-              >
-                <div className="flex items-center space-x-4 flex-1 min-w-0">
-                  <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                    isStopped ? 'bg-red-500' : 'bg-green-500'
-                  }`} />
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {site.Name}
-                      </h3>
-                      <Badge variant={stateVariant} className="text-xs font-medium uppercase flex-shrink-0">
-                        {stateLabel}
-                      </Badge>
+              return (
+                <div 
+                  key={site.Id} 
+                  className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 transition-all ${
+                    isLoading ? 'opacity-60' : 'hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center space-x-4 flex-1 min-w-0">
+                      <div className={`w-3 h-3 rounded-full flex-shrink-0 shadow-lg ${
+                        isStopped ? 'bg-red-500 shadow-red-500/50' : 'bg-green-500 shadow-green-500/50'
+                      } ${isStarting || isStopping ? 'animate-pulse' : ''}`} />
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 truncate">
+                            {site.Name}
+                          </h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${stateVariant}`}>
+                            {isStarting || isStopping ? (
+                              <span className="flex items-center space-x-1.5">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <span>{stateLabel}</span>
+                              </span>
+                            ) : (
+                              stateLabel
+                            )}
+                          </span>
+                        </div>
+                        
+                        <URLList urlString={site.URL} />
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-mono">ID: {site.Id}</p>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Link className="w-4 h-4 flex-shrink-0 text-blue-500" />
-                      <a 
-                        href={site.URL} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="hover:text-blue-600 dark:hover:text-blue-400 truncate font-mono text-xs"
-                        title={`Abrir ${site.URL}`}
+
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleSiteControl(site.Name, isStopped ? 'start' : 'stop')}
+                        disabled={isLoading}
+                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 min-w-28 justify-center ${
+                          isStopped 
+                            ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30' 
+                            : 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/30'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
-                        {site.URL}
-                      </a>
+                        {isLoading && isSiteLoading(site.Name) ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : isStopped ? (
+                          <>
+                            <Play className="w-4 h-4 fill-current" />
+                            <span>Iniciar</span>
+                          </>
+                        ) : (
+                          <>
+                            <Square className="w-4 h-4 fill-current" />
+                            <span>Detener</span>
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        onClick={() => handleSiteControl(site.Name, 'restart')}
+                        disabled={true}
+                        className="px-4 py-2 rounded-lg font-medium text-sm border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center space-x-2 min-w-28 justify-center disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                      >
+                        {isLoading && isSiteLoading(site.Name) ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4" />
+                            <span>Reiniciar</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">ID: {site.Id}</p>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
-                  <Button
-                    onClick={() => onSiteControl(site.Name, isStopped ? 'start' : 'stop')}
-                    variant={isStopped ? "default" : "destructive"}
-                    size="sm"
-                    className="flex items-center space-x-2 transition-colors"
-                    disabled={site.State === SITE_STATES.STARTING}
-                  >
-                    {isStopped ? (
-                      <>
-                        <Play className="w-4 h-4" />
-                        <span>Iniciar</span>
-                      </>
-                    ) : (
-                      <>
-                        <Square className="w-4 h-4" />
-                        <span>Detener</span>
-                      </>
-                    )}
-                  </Button>
+                  {isLoading && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center space-x-2 text-sm text-blue-600 dark:text-blue-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="font-medium">Procesando operación...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Vista de cuadrícula */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {filteredSites.map((site) => {
+              const stateLabel = getSiteStateLabel(site.State);
+              const stateVariant = getSiteStateVariant(site.State);
+              const isStopped = site.State === SITE_STATES.STOPPED;
+              const isStarting = site.State === SITE_STATES.STARTING;
+              const isStopping = site.State === SITE_STATES.STOPPING;
+              const isLoading = isSiteLoading(site.Name) || isStarting || isStopping;
+
+              return (
+                <div 
+                  key={site.Id} 
+                  className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 transition-all ${
+                    isLoading ? 'opacity-60' : 'hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2.5 h-2.5 rounded-full shadow-lg ${
+                        isStopped ? 'bg-red-500 shadow-red-500/50' : 'bg-green-500 shadow-green-500/50'
+                      } ${isStarting || isStopping ? 'animate-pulse' : ''}`} />
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase ${stateVariant}`}>
+                        {isStarting || isStopping ? (
+                          <span className="flex items-center space-x-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>{stateLabel}</span>
+                          </span>
+                        ) : (
+                          stateLabel
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 mb-3 truncate">
+                    {site.Name}
+                  </h3>
                   
-                  <Button
-                    onClick={() => onSiteControl(site.Name, 'restart')}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center space-x-2"
-                    disabled={site.State === SITE_STATES.STARTING}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Reiniciar</span>
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* Vista de cuadrícula */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSites.map((site) => {
-            const stateLabel = getSiteStateLabel(site.State);
-            const stateVariant = getSiteStateVariant(site.State);
-            const isStopped = site.State === SITE_STATES.STOPPED;
-
-            return (
-              <div 
-                key={site.Id} 
-                className="border rounded-lg p-4 hover:shadow-md transition-all bg-white dark:bg-gray-800"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      isStopped ? 'bg-red-500' : 'bg-green-500'
-                    }`} />
-                    <Badge variant={stateVariant} className="text-xs font-medium uppercase">
-                      {stateLabel}
-                    </Badge>
+                  <div className="mb-4">
+                    <URLList urlString={site.URL} />
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-mono">ID: {site.Id}</p>
                   </div>
-                </div>
 
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 truncate">
-                  {site.Name}
-                </h3>
-                
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                    <Link className="w-4 h-4 flex-shrink-0 text-blue-500" />
-                    <a 
-                      href={site.URL} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="hover:text-blue-600 dark:hover:text-blue-400 truncate text-xs font-mono"
-                      title={`Abrir ${site.URL}`}
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleSiteControl(site.Name, isStopped ? 'start' : 'stop')}
+                      disabled={isLoading}
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center space-x-1.5 ${
+                        isStopped 
+                          ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30' 
+                          : 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/30'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {site.URL}
-                    </a>
+                      {isLoading && isSiteLoading(site.Name) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isStopped ? (
+                        <>
+                          <Play className="w-4 h-4 fill-current" />
+                          <span>Iniciar</span>
+                        </>
+                      ) : (
+                        <>
+                          <Square className="w-4 h-4 fill-current" />
+                          <span>Detener</span>
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={() => handleSiteControl(site.Name, 'restart')}
+                      disabled={true}
+                      className="px-3 py-2 rounded-lg font-medium text-sm border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
+                    >
+                      {isLoading && isSiteLoading(site.Name) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">ID: {site.Id}</p>
-                </div>
 
-                <div className="flex space-x-2">
-                  <Button
-                    onClick={() => onSiteControl(site.Name, isStopped ? 'start' : 'stop')}
-                    variant={isStopped ? "default" : "destructive"}
-                    size="sm"
-                    className="flex-1 flex items-center justify-center space-x-1"
-                    disabled={site.State === SITE_STATES.STARTING}
-                  >
-                    {isStopped ? <Play className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                    <span>{isStopped ? 'Iniciar' : 'Detener'}</span>
-                  </Button>
-                  
-                  <Button
-                    onClick={() => onSiteControl(site.Name, 'restart')}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center justify-center space-x-1"
-                    disabled={site.State === SITE_STATES.STARTING}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </Button>
+                  {isLoading && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-center space-x-2 text-xs text-blue-600 dark:text-blue-400">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span className="font-medium">Procesando...</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,4 +1,6 @@
-const API_BASE = 'http://localhost:8080';
+import { API_CONFIG } from "@/utils/constant";
+
+const API_BASE = API_CONFIG.BASE_URL;
 
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { MonitoringControlResponse,IISSite } from '@/types';
+import type { MonitoringControlResponse,IISSite,IISControlResponse } from '@/types';
+import { API_CONFIG } from '@/utils/constant';
 
 interface MonitoringEvent {
-  type: 'initial_status' | 'monitoring_started' | 'monitoring_stopped' | 'websites_list' | 'connected';
+  type: 'initial_status' | 'monitoring_started' | 'monitoring_stopped' | 'websites_list' | 'connected' | 'control_iis_site';
 
   data: {
     //para eventos de monitoring
@@ -12,7 +13,8 @@ interface MonitoringEvent {
     message?: string;
     //para eventos de websites
     sites?: IISSite[];
-
+    //para eventos de control de IIS
+    iis_control?: IISControlResponse;
   };
   timestamp: string;
 }
@@ -41,6 +43,15 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
   const isMountedRef = useRef(true);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
+
+  const updateSiteState = (sites: IISSite[], siteName: string, newState: number): IISSite[] => {
+    const updatedSites = sites.map(site => 
+      site.Name === siteName 
+        ? { ...site, State: newState }
+        : site
+    );
+    return updatedSites;
+  };
 
   const closeConnection = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -80,7 +91,7 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
 
     try {
       console.log(`🔄 Conectando... (intento ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
-      const es = new EventSource('http://localhost:8080/monitoring/events');
+      const es = new EventSource(`${API_CONFIG.BASE_URL}/monitoring/events`);
       eventSourceRef.current = es;
       setError(null);
 
@@ -138,6 +149,34 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
               setSites(eventData.data.sites || []);
               setLoading(false);
               break;
+
+            case 'control_iis_site':
+              const iisData = eventData.data.iis_control;
+                if (!iisData?.iis_site) {
+                  console.warn('❌ Evento control_iis_site sin datos válidos:', iisData);
+                  break;
+                }
+
+                const action = (iisData.iis_action || '').toLowerCase();
+                let newState = -1;
+                if (action.includes('starting') || action === 'start') {
+                  newState = 0; // STARTING
+                } else if (action.includes('stopping') || action === 'stop') {
+                  newState = 2; // STOPPING  
+                } else if (action.includes('started') || action === 'running') {
+                  newState = 1; // STARTED
+                } else if (action.includes('stopped')) {
+                  newState = 3; // STOPPED
+                }
+                if (newState !== -1) {
+                  console.log(`✅ Actualizando ${iisData.iis_site}: ${iisData.iis_action} → ${newState}`);
+                  setSites(prevSites => 
+                    updateSiteState(prevSites, iisData.iis_site, newState)
+                  );
+                } else {
+                  console.warn('❌ No se pudo determinar el estado para:', iisData.iis_action);
+                }
+              break
             default:
               console.warn('Tipo de evento no manejado:', eventData.type);
           }

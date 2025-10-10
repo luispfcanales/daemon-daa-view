@@ -17,12 +17,12 @@ export interface IISControlRequest {
 }
 
 export interface IISControlResponse {
-  action: string;
-  duration: string;
-  output: string;
-  site: string;
-  success: boolean;
-  timestamp: string;
+  iis_action: string;
+  iis_duration: string;
+  iis_output: string;
+  iis_site: string;
+  iss_success: boolean;
+  iis_timestamp: string;
 }
 
 export interface MonitoringControlRequest {
