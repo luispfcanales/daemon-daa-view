@@ -25,6 +25,17 @@ export interface IISControlResponse {
   iis_timestamp: string;
 }
 
+export interface IPMonitoringCheck {
+  domain: string;
+  expected_ip: string;
+  actual_ips: string[];
+  is_valid: boolean;
+  error: string;
+  timestamp: string;
+  duration_ms: number;
+  request_time: number;
+}
+
 export interface MonitoringControlRequest {
   action: 'start' | 'stop' | 'status';
 }

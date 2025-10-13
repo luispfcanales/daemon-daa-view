@@ -23,7 +23,7 @@ const MonitoringControl: React.FC<MonitoringControlProps> = ({
   const handleControlMonitoring = async (action: 'start' | 'stop') => {
     // Primero llamamos a la API para cambiar el estado
     const result = await monitoringService.controlMonitoring(action);
-    
+
     if (result.success) {
       // Luego notificamos al componente padre
       onControlMonitoring(action);
@@ -71,9 +71,8 @@ const MonitoringControl: React.FC<MonitoringControlProps> = ({
       {/* Control del monitoreo */}
       <div className="flex items-center justify-between p-4 border rounded-lg">
         <div className="flex items-center space-x-4">
-          <div className={`p-3 rounded-full ${
-            monitoringStatus?.is_running ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-          }`}>
+          <div className={`p-3 rounded-full ${monitoringStatus?.is_running ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+            }`}>
             <Power className="w-6 h-6" />
           </div>
           <div>
@@ -127,17 +126,15 @@ const MonitoringControl: React.FC<MonitoringControlProps> = ({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Estado:</span>
-                <span className={`font-semibold ${
-                  monitoringStatus?.is_running ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <span className={`font-semibold ${monitoringStatus?.is_running ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {monitoringStatus?.is_running ? 'ACTIVO' : 'INACTIVO'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Conexión:</span>
-                <span className={`font-semibold ${
-                  isConnected ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <span className={`font-semibold ${isConnected ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {isConnected ? 'LIVE' : 'OFFLINE'}
                 </span>
               </div>

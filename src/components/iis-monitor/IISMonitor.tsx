@@ -5,20 +5,21 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 
 import { useIISMonitor } from '@/hooks/useIISMonitor';
 import DashboardStats from './DashboardStats';
+import MonitoringStats from './MonitoringStats';
 import SiteList from './SiteList';
 import MonitoringControl from './MonitoringControl';
 import { SITE_STATES } from '@/utils/constant';
 
 const IISMonitor: React.FC = () => {
-  const { 
-    sites, 
-    monitoringStatus, 
-    loading, 
+  const {
+    sites,
+    ipChecks,
+    monitoringStatus,
+    loading,
     error,
     isConnected,
     controlIISSite,
     reconnect,
-    // refresh 
   } = useIISMonitor();
 
   const activeSitesCount = sites.filter(site => site.State === SITE_STATES.STARTED).length;
@@ -63,20 +64,12 @@ const IISMonitor: React.FC = () => {
             Gestión y monitoreo de sitios web IIS {isConnected && '• ✅ Conectado en tiempo real'}
           </p>
         </div>
-        {/* <Button
-          onClick={refresh}
-          variant="outline"
-          className="flex items-center space-x-2"
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span>Actualizar</span>
-        </Button> */}
       </div>
 
       {/* Estadísticas */}
-      <DashboardStats 
-        sites={sites} 
-        monitoringStatus={monitoringStatus} 
+      <DashboardStats
+        sites={sites}
+        monitoringStatus={monitoringStatus}
         isConnected={isConnected}
       />
 
@@ -84,6 +77,7 @@ const IISMonitor: React.FC = () => {
         <TabsList>
           <TabsTrigger value="sites">Sitios IIS</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoreo</TabsTrigger>
+          <TabsTrigger value="stats">Estadísticas DNS</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
 
@@ -96,9 +90,9 @@ const IISMonitor: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <SiteList 
-                sites={sites} 
-                onSiteControl={controlIISSite} 
+              <SiteList
+                sites={sites}
+                onSiteControl={controlIISSite}
               />
             </CardContent>
           </Card>
@@ -137,14 +131,17 @@ const IISMonitor: React.FC = () => {
                 <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Los logs se mostrarán aquí cuando el monitoreo esté activo</p>
                 <p className="text-sm">
-                  {isConnected 
-                    ? '✅ Conectado al servidor de eventos' 
+                  {isConnected
+                    ? '✅ Conectado al servidor de eventos'
                     : '❌ No conectado - Los logs no se actualizarán'
                   }
                 </p>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="stats">
+          <MonitoringStats checks={ipChecks} />
         </TabsContent>
       </Tabs>
     </div>

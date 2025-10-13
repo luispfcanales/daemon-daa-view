@@ -1,11 +1,19 @@
-import {  useEffect } from 'react';
+import { useEffect } from 'react';
 import { iisService } from '@/services';
 import { useMonitoringEvents } from './useMonitoringEvents';
 
 export const useIISMonitor = () => {
-  
+
   // Usar el hook de eventos para todo
-  const { monitoringStatus, isConnected, error: eventsError, sites, loading, reconnect } = useMonitoringEvents();
+  const {
+    monitoringStatus,
+    isConnected,
+    error: eventsError,
+    sites,
+    ipChecks,
+    loading,
+    reconnect,
+  } = useMonitoringEvents();
 
   const controlIISSite = async (siteName: string, action: 'start' | 'stop' | 'restart') => {
     try {
@@ -32,6 +40,7 @@ export const useIISMonitor = () => {
 
   return {
     sites,
+    ipChecks,
     monitoringStatus,
     loading,
     error: eventsError,

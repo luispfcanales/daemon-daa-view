@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { MonitoringControlResponse,IISSite,IISControlResponse } from '@/types';
+import type { MonitoringControlResponse, IISSite, IISControlResponse, IPMonitoringCheck } from '@/types';
 import { API_CONFIG } from '@/utils/constant';
 
 interface MonitoringEvent {
-  type: 'initial_status' | 'monitoring_started' | 'monitoring_stopped' | 'websites_list' | 'connected' | 'control_iis_site';
+  type: 'initial_status' | 'monitoring_started' | 'monitoring_stopped' | 'websites_list' | 'connected' | 'control_iis_site' | 'monitoring_ip';
 
   data: {
     //para eventos de monitoring
@@ -15,6 +15,8 @@ interface MonitoringEvent {
     sites?: IISSite[];
     //para eventos de control de IIS
     iis_control?: IISControlResponse;
+    //para eventos de monitoreo dns
+    check?: IPMonitoringCheck;
   };
   timestamp: string;
 }
@@ -24,12 +26,14 @@ interface UseMonitoringEventsReturn {
   isConnected: boolean;
   error: string | null;
   sites: IISSite[];
+  ipChecks: IPMonitoringCheck[];
   loading: boolean;
   reconnect: () => void;
 }
 
 export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
   //para monitoreo de eventos de monitoring
+  const [ipChecks, setIpChecks] = useState<IPMonitoringCheck[]>([]);
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringControlResponse | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +41,7 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
   const [sites, setSites] = useState<IISSite[]>([]);
   const [loading, setLoading] = useState(true);
 
-  
+
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
@@ -45,8 +49,8 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
   const maxReconnectAttempts = 5;
 
   const updateSiteState = (sites: IISSite[], siteName: string, newState: number): IISSite[] => {
-    const updatedSites = sites.map(site => 
-      site.Name === siteName 
+    const updatedSites = sites.map(site =>
+      site.Name === siteName
         ? { ...site, State: newState }
         : site
     );
@@ -58,12 +62,12 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-    
+
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-    
+
     setIsConnected(false);
   }, []);
 
@@ -145,6 +149,13 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
               });
               break;
 
+            case 'monitoring_ip':
+              const checkData = eventData.data.check;
+              if (checkData) {
+                setIpChecks(prev => [...prev, checkData].slice(-100)); // Mantener últimos 100
+              }
+              break;
+
             case 'websites_list':
               setSites(eventData.data.sites || []);
               setLoading(false);
@@ -152,30 +163,30 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
 
             case 'control_iis_site':
               const iisData = eventData.data.iis_control;
-                if (!iisData?.iis_site) {
-                  console.warn('❌ Evento control_iis_site sin datos válidos:', iisData);
-                  break;
-                }
+              if (!iisData?.iis_site) {
+                console.warn('❌ Evento control_iis_site sin datos válidos:', iisData);
+                break;
+              }
 
-                const action = (iisData.iis_action || '').toLowerCase();
-                let newState = -1;
-                if (action.includes('starting') || action === 'start') {
-                  newState = 0; // STARTING
-                } else if (action.includes('stopping') || action === 'stop') {
-                  newState = 2; // STOPPING  
-                } else if (action.includes('started') || action === 'running') {
-                  newState = 1; // STARTED
-                } else if (action.includes('stopped')) {
-                  newState = 3; // STOPPED
-                }
-                if (newState !== -1) {
-                  console.log(`✅ Actualizando ${iisData.iis_site}: ${iisData.iis_action} → ${newState}`);
-                  setSites(prevSites => 
-                    updateSiteState(prevSites, iisData.iis_site, newState)
-                  );
-                } else {
-                  console.warn('❌ No se pudo determinar el estado para:', iisData.iis_action);
-                }
+              const action = (iisData.iis_action || '').toLowerCase();
+              let newState = -1;
+              if (action.includes('starting') || action === 'start') {
+                newState = 0; // STARTING
+              } else if (action.includes('stopping') || action === 'stop') {
+                newState = 2; // STOPPING  
+              } else if (action.includes('started') || action === 'running') {
+                newState = 1; // STARTED
+              } else if (action.includes('stopped')) {
+                newState = 3; // STOPPED
+              }
+              if (newState !== -1) {
+                console.log(`✅ Actualizando ${iisData.iis_site}: ${iisData.iis_action} → ${newState}`);
+                setSites(prevSites =>
+                  updateSiteState(prevSites, iisData.iis_site, newState)
+                );
+              } else {
+                console.warn('❌ No se pudo determinar el estado para:', iisData.iis_action);
+              }
               break
             default:
               console.warn('Tipo de evento no manejado:', eventData.type);
@@ -187,10 +198,10 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
 
       es.onerror = (errorEvent) => {
         console.error('❌ Error en la conexión SSE:', errorEvent);
-        
+
         const readyState = eventSourceRef.current?.readyState;
         console.log('ReadyState:', readyState);
-        
+
         // Determinar tipo de error
         let errorMessage = 'Error de conexión con el servidor';
         if (readyState === EventSource.CLOSED) {
@@ -198,7 +209,7 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
         } else if (readyState === EventSource.CONNECTING) {
           errorMessage = 'Reconectando al servidor...';
         }
-        
+
         setIsConnected(false);
         setError(errorMessage);
 
@@ -209,14 +220,14 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
             eventSourceRef.current.close();
             eventSourceRef.current = null;
           }
-          
+
           // Solo reintentar si el componente está montado y no alcanzamos el límite
           if (isMountedRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
             reconnectAttemptsRef.current += 1;
             const delay = Math.min(3000 * reconnectAttemptsRef.current, 15000);
-            
+
             console.log(`🔄 Reconectando en ${delay / 1000}s...`);
-            
+
             reconnectTimeoutRef.current = window.setTimeout(() => {
               if (isMountedRef.current) {
                 createEventSource();
@@ -230,7 +241,7 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
       console.error('Error al crear EventSource:', err);
       setError('No se pudo conectar al servidor de eventos');
       reconnectAttemptsRef.current += 1;
-      
+
       // Intentar reconectar después de 5 segundos en caso de error inicial
       if (isMountedRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
         reconnectTimeoutRef.current = window.setTimeout(() => {
@@ -251,7 +262,7 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     // Crear conexión inicial
     createEventSource();
 
@@ -268,6 +279,7 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
     isConnected,
     error,
     sites,
+    ipChecks,
     loading,
     reconnect
   };
