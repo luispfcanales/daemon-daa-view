@@ -62,6 +62,13 @@ export interface MonitoringControlResponse {
   success: boolean;
 }
 
+//dns types service
+export interface DNSConfigResponse {
+  dns: string;
+  expected_ip: string;
+  status: boolean;
+}
+
 export interface PingLog {
   id: string;
   siteName: string;

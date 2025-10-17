@@ -1,5 +1,8 @@
 import { apiClient } from './apiClient';
-import type { MonitoringControlResponse, MonitoringControlRequest } from '@/types';
+import type {
+  MonitoringControlResponse,
+  MonitoringControlRequest,
+} from '@/types';
 
 export const monitoringService = {
   async controlMonitoring(action: 'start' | 'stop' | 'status'): Promise<MonitoringControlResponse> {
@@ -11,3 +14,4 @@ export const monitoringService = {
     return this.controlMonitoring('status');
   },
 };
+

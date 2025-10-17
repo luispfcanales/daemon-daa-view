@@ -8,7 +8,7 @@ import DashboardStats from './DashboardStats';
 import MonitoringStats from './MonitoringStats/MonitoringStats';
 import SiteList from './SiteList';
 import MonitoringControl from './MonitoringControl';
-import { SITE_STATES } from '@/utils/constant';
+// import { SITE_STATES } from '@/utils/constant';
 
 const IISMonitor: React.FC = () => {
   const {
@@ -23,7 +23,7 @@ const IISMonitor: React.FC = () => {
     reconnect,
   } = useIISMonitor();
 
-  const activeSitesCount = sites.filter(site => site.State === SITE_STATES.STARTED).length;
+  // const activeSitesCount = sites.filter(site => site.State === SITE_STATES.STARTED).length;
 
   const handleControlMonitoring = async (action: 'start' | 'stop') => {
     // Esta función se mantiene para compatibilidad, pero el estado real
@@ -113,7 +113,6 @@ const IISMonitor: React.FC = () => {
                 isConnected={isConnected}
                 onControlMonitoring={handleControlMonitoring}
                 onReconnect={reconnect}
-                activeSitesCount={activeSitesCount}
               />
             </CardContent>
           </Card>
