@@ -5,7 +5,7 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 
 import { useIISMonitor } from '@/hooks/useIISMonitor';
 import DashboardStats from './DashboardStats';
-import MonitoringStats from './MonitoringStats';
+import MonitoringStats from './MonitoringStats/MonitoringStats';
 import SiteList from './SiteList';
 import MonitoringControl from './MonitoringControl';
 import { SITE_STATES } from '@/utils/constant';
@@ -14,6 +14,7 @@ const IISMonitor: React.FC = () => {
   const {
     sites,
     ipChecks,
+    dnsStats,
     monitoringStatus,
     loading,
     error,
@@ -140,8 +141,13 @@ const IISMonitor: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
         <TabsContent value="stats">
-          <MonitoringStats checks={ipChecks} />
+          {/* ✅ Pasar ambas props al componente actualizado */}
+          <MonitoringStats
+            ipChecks={ipChecks}
+            dnsStats={dnsStats}
+          />
         </TabsContent>
       </Tabs>
     </div>

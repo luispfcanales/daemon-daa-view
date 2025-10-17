@@ -3,7 +3,6 @@ import { iisService } from '@/services';
 import { useMonitoringEvents } from './useMonitoringEvents';
 
 export const useIISMonitor = () => {
-
   // Usar el hook de eventos para todo
   const {
     monitoringStatus,
@@ -11,6 +10,7 @@ export const useIISMonitor = () => {
     error: eventsError,
     sites,
     ipChecks,
+    dnsStats,           // ✅ Agregar dnsStats
     loading,
     reconnect,
   } = useMonitoringEvents();
@@ -41,6 +41,7 @@ export const useIISMonitor = () => {
   return {
     sites,
     ipChecks,
+    dnsStats,           // ✅ Devolver dnsStats
     monitoringStatus,
     loading,
     error: eventsError,

@@ -36,6 +36,21 @@ export interface IPMonitoringCheck {
   request_time: number;
 }
 
+export interface DNSStats {
+  dns: string;
+  average_uptime: number;
+  avg_response_time: number;
+  checks_with_timing: number;
+  last_check: string;
+  max_response_time: number;
+  min_response_time: number;
+  p95_response_time: number;
+  success_count: number;
+  success_rate: number;
+  total_checks: number;
+}
+
+
 export interface MonitoringControlRequest {
   action: 'start' | 'stop' | 'status';
 }
@@ -54,4 +69,21 @@ export interface PingLog {
   responseTime: number;
   status: 'success' | 'error';
   errorMessage?: string;
+}
+
+// Eventos específicos
+export interface IPMonitoringEvent {
+  type: 'monitoring_ip';
+  data: {
+    check: IPMonitoringCheck;
+  };
+  timestamp: string;
+}
+
+export interface DNSStatsCachedEvent {
+  type: 'monitoring_domain_stats_cached';
+  data: {
+    stats: Array<DNSStats>;
+  };
+  timestamp: string;
 }

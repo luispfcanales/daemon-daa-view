@@ -1,92 +1,93 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { MonitoringControlResponse, IISSite, IISControlResponse, IPMonitoringCheck } from '@/types';
+import type {
+  MonitoringControlResponse,
+  IISSite,
+  IPMonitoringCheck,
+  DNSStats,
+  IPMonitoringEvent,
+  DNSStatsCachedEvent
+} from '@/types';
+import { useIPMonitoring } from './useIPMonitoring';
+import { useDNSStats } from './useDNSStats';
 import { API_CONFIG } from '@/utils/constant';
-
-interface MonitoringEvent {
-  type: 'initial_status' | 'monitoring_started' | 'monitoring_stopped' | 'websites_list' | 'connected' | 'control_iis_site' | 'monitoring_ip';
-
-  data: {
-    //para eventos de monitoring
-    is_running?: boolean;
-    interval?: number;
-    started_at?: string;
-    message?: string;
-    //para eventos de websites
-    sites?: IISSite[];
-    //para eventos de control de IIS
-    iis_control?: IISControlResponse;
-    //para eventos de monitoreo dns
-    check?: IPMonitoringCheck;
-  };
-  timestamp: string;
-}
 
 interface UseMonitoringEventsReturn {
   monitoringStatus: MonitoringControlResponse | null;
   isConnected: boolean;
   error: string | null;
   sites: IISSite[];
-  ipChecks: IPMonitoringCheck[];
   loading: boolean;
   reconnect: () => void;
+  ipChecks: IPMonitoringCheck[];
+  addIPCheck: (check: IPMonitoringCheck) => void;
+  clearIPChecks: () => void;
+  getChecksByDomain: (domain: string) => IPMonitoringCheck[];
+  dnsStats: Record<string, DNSStats>;
+  updateDNSStats: (stats: Record<string, DNSStats>) => void;
+  getDNSStat: (domain: string) => DNSStats | null;
+  clearDNSStats: () => void;
 }
 
 export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
-  //para monitoreo de eventos de monitoring
-  const [ipChecks, setIpChecks] = useState<IPMonitoringCheck[]>([]);
+  // Estados principales
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringControlResponse | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  //para monitoreo de eventos de websites
   const [sites, setSites] = useState<IISSite[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Hooks especializados - SIEMPRE en el mismo orden
+  const { ipChecks, addIPCheck, clearIPChecks, getChecksByDomain } = useIPMonitoring();
+  const { dnsStats, updateDNSStats, getDNSStat, clearDNSStats } = useDNSStats();
 
+  // Referencias
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
 
-  const updateSiteState = (sites: IISSite[], siteName: string, newState: number): IISSite[] => {
-    const updatedSites = sites.map(site =>
-      site.Name === siteName
-        ? { ...site, State: newState }
-        : site
+  // Usar refs para evitar dependencias circulares
+  const addIPCheckRef = useRef(addIPCheck);
+  const updateDNSStatsRef = useRef(updateDNSStats);
+
+  // Actualizar las refs cuando cambien las funciones
+  useEffect(() => {
+    addIPCheckRef.current = addIPCheck;
+  }, [addIPCheck]);
+
+  useEffect(() => {
+    updateDNSStatsRef.current = updateDNSStats;
+  }, [updateDNSStats]);
+
+  const updateSiteState = useCallback((sites: IISSite[], siteName: string, newState: number): IISSite[] => {
+    return sites.map(site =>
+      site.Name === siteName ? { ...site, State: newState } : site
     );
-    return updatedSites;
-  };
+  }, []);
 
   const closeConnection = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-
     setIsConnected(false);
   }, []);
 
   const createEventSource = useCallback(() => {
-    // No crear nueva conexión si ya existe una activa
     if (eventSourceRef.current?.readyState === EventSource.OPEN) {
       console.log('⚠️ Ya existe una conexión activa');
       return;
     }
 
-    // No crear nueva conexión si el componente está desmontado
-    if (!isMountedRef.current) {
-      return;
-    }
+    if (!isMountedRef.current) return;
 
-    // Cerrar conexión existente
     closeConnection();
 
-    // Verificar límite de reintentos
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
       console.error('❌ Máximo de reintentos alcanzado');
       setError('No se pudo establecer conexión después de varios intentos');
@@ -104,18 +105,15 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
         setIsConnected(true);
         setError(null);
         setSites([]);
-        reconnectAttemptsRef.current = 0; // Reset contador en conexión exitosa
+        reconnectAttemptsRef.current = 0;
       };
 
       es.onmessage = (event) => {
         try {
-          // Ignorar heartbeats
-          if (event.data === ': heartbeat' || event.data.trim() === '') {
-            return;
-          }
+          if (event.data === ': heartbeat' || event.data.trim() === '') return;
 
-          const eventData: MonitoringEvent = JSON.parse(event.data);
-          console.log('📨 Evento recibido:', eventData);
+          const eventData = JSON.parse(event.data);
+          //console.log('📨 Evento recibido:', eventData.type);
 
           switch (eventData.type) {
             case 'connected':
@@ -149,138 +147,152 @@ export const useMonitoringEvents = (): UseMonitoringEventsReturn => {
               });
               break;
 
-            case 'monitoring_ip':
-              const checkData = eventData.data.check;
+            case 'monitoring_ip': {
+              const checkData = (eventData as IPMonitoringEvent).data.check;
+              console.log(eventData)
               if (checkData) {
-                setIpChecks(prev => [...prev, checkData].slice(-100)); // Mantener últimos 100
+                addIPCheckRef.current(checkData);
+                //console.log('✅ IP Check agregado');
               }
               break;
+            }
+
+            case 'monitoring_domain_stats_cached': {
+              const statsArray = (eventData as DNSStatsCachedEvent).data.stats;
+
+              console.log(eventData)
+
+              if (statsArray && Array.isArray(statsArray)) {
+                //console.log('💾 DNS Stats Cached:', statsArray.length, 'dominios');
+                const statsRecord: Record<string, DNSStats> = {};
+                statsArray.forEach(stat => {
+                  statsRecord[stat.dns] = stat;
+                  //console.log(`   💾 ${stat.dns}: ${stat.success_rate}% - ${stat.total_checks} checks`);
+                });
+                updateDNSStatsRef.current(statsRecord);
+                //console.log('✅ DNS Stats Cached procesados');
+              }
+              break;
+            }
+
+            case 'monitoring_domain_stats': {
+              const singleStat = (eventData as any).data.stats;
+              if (singleStat && singleStat.dns) {
+
+                const statsRecord: Record<string, DNSStats> = {
+                  [singleStat.dns]: singleStat
+                };
+
+                updateDNSStatsRef.current(statsRecord);
+              }
+              break;
+            }
 
             case 'websites_list':
               setSites(eventData.data.sites || []);
               setLoading(false);
               break;
 
-            case 'control_iis_site':
+            case 'control_iis_site': {
               const iisData = eventData.data.iis_control;
               if (!iisData?.iis_site) {
-                console.warn('❌ Evento control_iis_site sin datos válidos:', iisData);
+                console.warn('❌ Evento control_iis_site sin datos válidos');
                 break;
               }
 
               const action = (iisData.iis_action || '').toLowerCase();
               let newState = -1;
-              if (action.includes('starting') || action === 'start') {
-                newState = 0; // STARTING
-              } else if (action.includes('stopping') || action === 'stop') {
-                newState = 2; // STOPPING  
-              } else if (action.includes('started') || action === 'running') {
-                newState = 1; // STARTED
-              } else if (action.includes('stopped')) {
-                newState = 3; // STOPPED
-              }
+              if (action.includes('starting') || action === 'start') newState = 0;
+              else if (action.includes('stopping') || action === 'stop') newState = 2;
+              else if (action.includes('started') || action === 'running') newState = 1;
+              else if (action.includes('stopped')) newState = 3;
+
               if (newState !== -1) {
-                console.log(`✅ Actualizando ${iisData.iis_site}: ${iisData.iis_action} → ${newState}`);
-                setSites(prevSites =>
-                  updateSiteState(prevSites, iisData.iis_site, newState)
-                );
-              } else {
-                console.warn('❌ No se pudo determinar el estado para:', iisData.iis_action);
+                setSites(prevSites => updateSiteState(prevSites, iisData.iis_site, newState));
               }
-              break
+              break;
+            }
+
             default:
-              console.warn('Tipo de evento no manejado:', eventData.type);
+              console.log('⚠️ Tipo de evento no manejado:', eventData.type);
           }
         } catch (parseError) {
-          console.error('Error parsing event data:', parseError);
+          console.error('❌ Error parsing event:', parseError);
         }
       };
 
       es.onerror = (errorEvent) => {
-        console.error('❌ Error en la conexión SSE:', errorEvent);
-
+        console.error('❌ Error SSE:', errorEvent);
         const readyState = eventSourceRef.current?.readyState;
-        console.log('ReadyState:', readyState);
 
-        // Determinar tipo de error
-        let errorMessage = 'Error de conexión con el servidor';
-        if (readyState === EventSource.CLOSED) {
-          errorMessage = 'Conexión cerrada por el servidor';
-        } else if (readyState === EventSource.CONNECTING) {
-          errorMessage = 'Reconectando al servidor...';
-        }
+        let errorMessage = 'Error de conexión';
+        if (readyState === EventSource.CLOSED) errorMessage = 'Conexión cerrada';
+        else if (readyState === EventSource.CONNECTING) errorMessage = 'Reconectando...';
 
         setIsConnected(false);
         setError(errorMessage);
 
-        // IMPORTANTE: No cerrar explícitamente aquí, EventSource maneja su propio ciclo
-        // Solo limpiar la referencia si está definitivamente cerrado
         if (readyState === EventSource.CLOSED) {
           if (eventSourceRef.current) {
             eventSourceRef.current.close();
             eventSourceRef.current = null;
           }
 
-          // Solo reintentar si el componente está montado y no alcanzamos el límite
           if (isMountedRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
             reconnectAttemptsRef.current += 1;
             const delay = Math.min(3000 * reconnectAttemptsRef.current, 15000);
-
-            console.log(`🔄 Reconectando en ${delay / 1000}s...`);
-
             reconnectTimeoutRef.current = window.setTimeout(() => {
-              if (isMountedRef.current) {
-                createEventSource();
-              }
+              if (isMountedRef.current) createEventSource();
             }, delay);
           }
         }
       };
-
     } catch (err) {
-      console.error('Error al crear EventSource:', err);
-      setError('No se pudo conectar al servidor de eventos');
+      console.error('❌ Error al crear EventSource:', err);
+      setError('No se pudo conectar');
       reconnectAttemptsRef.current += 1;
 
-      // Intentar reconectar después de 5 segundos en caso de error inicial
       if (isMountedRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
         reconnectTimeoutRef.current = window.setTimeout(() => {
-          if (isMountedRef.current) {
-            createEventSource();
-          }
+          if (isMountedRef.current) createEventSource();
         }, 5000);
       }
     }
-  }, []); // Sin dependencias para evitar recreaciones
+  }, [closeConnection, updateSiteState]);
 
   const reconnect = useCallback(() => {
-    console.log('🔄 Reconexión manual solicitada');
-    reconnectAttemptsRef.current = 0; // Reset contador en reconexión manual
+    console.log('🔄 Reconexión manual');
+    reconnectAttemptsRef.current = 0;
     setError(null);
     createEventSource();
   }, [createEventSource]);
 
   useEffect(() => {
     isMountedRef.current = true;
-
-    // Crear conexión inicial
+    console.log('🚀 Iniciando conexión SSE');
     createEventSource();
 
-    // Cleanup al desmontar el componente
     return () => {
-      console.log('🔌 Cerrando conexión SSE (unmount)');
+      console.log('🔌 Cerrando SSE');
       isMountedRef.current = false;
       closeConnection();
     };
-  }, []); // Array vacío para ejecutar solo una vez
+  }, [createEventSource, closeConnection]);
 
   return {
     monitoringStatus,
     isConnected,
     error,
     sites,
-    ipChecks,
     loading,
-    reconnect
+    reconnect,
+    ipChecks,
+    addIPCheck,
+    clearIPChecks,
+    getChecksByDomain,
+    dnsStats,
+    updateDNSStats,
+    getDNSStat,
+    clearDNSStats
   };
 };
