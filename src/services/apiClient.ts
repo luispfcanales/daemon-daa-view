@@ -18,7 +18,19 @@ class ApiClient {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return await response.json();
+
+      // Si es 204 No Content o no hay contenido
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return {} as T;
+      }
+
+      // Para DELETE exitoso, verifica si hay contenido
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+
+      return {} as T;
     } catch (error) {
       console.error('API request failed:', error);
       throw error;
@@ -33,6 +45,12 @@ class ApiClient {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'DELETE',
     });
   }
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,7 @@ const DNSMonitorManager: React.FC = () => {
   const [formData, setFormData] = useState({
     dns: '',
     expected_ip: '',
+    status: true
   });
 
   // Cargar datos
@@ -72,7 +74,11 @@ const DNSMonitorManager: React.FC = () => {
   // Modal handlers
   const handleAdd = () => {
     setEditingDomain(null);
-    setFormData({ dns: '', expected_ip: '' });
+    setFormData({
+      dns: '',
+      expected_ip: '',
+      status: true
+    });
     setModalOpen(true);
   };
 
@@ -81,6 +87,7 @@ const DNSMonitorManager: React.FC = () => {
     setFormData({
       dns: domain.dns,
       expected_ip: domain.expected_ip,
+      status: domain.status
     });
     setModalOpen(true);
   };
@@ -97,23 +104,19 @@ const DNSMonitorManager: React.FC = () => {
         const response = await fetch(`/api/dns-monitor/${editingDomain.dns}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            dns: formData.dns,
+            expected_ip: formData.expected_ip,
+            status: formData.status
+          }),
         });
 
         if (response.ok) {
           await handleDNSConfig();
         }
       } else {
-        // Agregar nuevo dominio
-        const response = await fetch('/api/dns-monitor', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
-
-        if (response.ok) {
-          await handleDNSConfig();
-        }
+        await dnsConfigService.createDNSConfig(formData)
+        await handleDNSConfig();
       }
 
       setModalOpen(false);
@@ -127,13 +130,8 @@ const DNSMonitorManager: React.FC = () => {
     if (!confirm('¿Estás seguro de eliminar este dominio?')) return;
 
     try {
-      const response = await fetch(`/api/dns-monitor/${domain.dns}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        await handleDNSConfig();
-      }
+      await dnsConfigService.deleteDNSConfig(domain.dns);
+      await handleDNSConfig();
     } catch (err) {
       alert('Error al eliminar');
       console.error(err);
@@ -323,6 +321,21 @@ const DNSMonitorManager: React.FC = () => {
                 value={formData.expected_ip}
                 onChange={(e) => setFormData({ ...formData, expected_ip: e.target.value })}
               />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="status"
+                checked={formData.status}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, status: checked as boolean })
+                }
+              />
+              <label
+                htmlFor="status"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Activo
+              </label>
             </div>
           </div>
 
