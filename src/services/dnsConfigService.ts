@@ -4,6 +4,9 @@ import type {
 } from '@/types';
 
 export const dnsConfigService = {
+  async updateDomain(domainId: string, domainData: any): Promise<DNSConfigResponse> {
+    return apiClient.put<DNSConfigResponse>(`/domain/update/${domainId}`, domainData);
+  },
   async getDNSConfigStatus(): Promise<Array<DNSConfigResponse>> {
     return apiClient.get<Array<DNSConfigResponse>>('/domain/list');
   },

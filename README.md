@@ -1,69 +1,75 @@
-# React + TypeScript + Vite
+# Aplicación de Monitoreo de Dominios y Sitios IIS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Esta aplicación web proporciona una interfaz para monitorear dominios y controlar sitios de Internet Information Services (IIS). Utiliza Server-Sent Events (SSE) para comunicación en tiempo real entre el servidor y el cliente.
 
-Currently, two official plugins are available:
+## Características Principales
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Monitoreo de Sitios IIS**: Visualización y control (encendido/apagado) de sitios web alojados en IIS.
+- **Monitoreo de Dominios DNS**: Verificación de resolución DNS y validación de direcciones IP esperadas.
+- **Comunicación en Tiempo Real**: Utiliza SSE (Server-Sent Events) para recibir actualizaciones en tiempo real.
+- **Estadísticas de Rendimiento**: Métricas de tiempo de respuesta y disponibilidad de dominios.
+- **Interfaz Responsiva**: Diseño moderno con componentes UI de Shadcn.
 
-## Expanding the ESLint configuration
+## Estructura de la Aplicación
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+La aplicación está organizada en los siguientes componentes principales:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Interfaz de Usuario
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **Panel Principal (IISMonitor)**: Interfaz principal con pestañas para diferentes funcionalidades:
+  - Lista de Sitios IIS
+  - Control de Monitoreo
+  - Estadísticas DNS
+  - Logs del Sistema
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Gestión de Dominios (DNSMonitorManager)**: Permite agregar, editar y eliminar dominios a monitorear, especificando la IP esperada.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Funcionalidades Implementadas
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Conexión en Tiempo Real**: Sistema de eventos SSE con reconexión automática.
+- **Control de Sitios IIS**: Interfaz para iniciar, detener y reiniciar sitios web.
+- **Monitoreo de Dominios**: Verificación de resolución DNS y validación de IPs.
+- **Estadísticas**: Recopilación y visualización de métricas de rendimiento:
+  - Tasa de éxito
+  - Tiempo de respuesta promedio
+  - Tiempo de respuesta mínimo/máximo
+  - Percentil 95 de tiempo de respuesta
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Tecnologías Utilizadas
+
+- **Frontend**: React + TypeScript + Vite
+- **Comunicación**: Server-Sent Events (SSE)
+- **UI Components**: Shadcn UI (basado en Tailwind CSS)
+- **Estado**: React Hooks personalizados
+
+## Hooks Personalizados
+
+- **useMonitoringEvents**: Gestiona la conexión SSE y procesa los eventos recibidos.
+- **useIISMonitor**: Proporciona funcionalidades para controlar sitios IIS.
+- **useIPMonitoring**: Gestiona los datos de monitoreo de IPs.
+- **useDNSStats**: Maneja las estadísticas de resolución DNS.
+
+## Tipos de Eventos SSE
+
+La aplicación procesa varios tipos de eventos SSE:
+
+- `connected`: Confirmación de conexión establecida
+- `initial_status`: Estado inicial del sistema de monitoreo
+- `monitoring_started/stopped`: Cambios en el estado del monitoreo
+- `monitoring_ip`: Resultados de verificación de IP
+- `monitoring_domain_stats`: Estadísticas de un dominio específico
+- `monitoring_domain_stats_cached`: Estadísticas almacenadas de múltiples dominios
+- `websites_list`: Lista actualizada de sitios IIS
+- `control_iis_site`: Resultado de operaciones de control en sitios IIS
+
+## Configuración del Proyecto
+
+Este proyecto utiliza Vite como herramienta de construcción. Para comenzar a desarrollar:
+
+```bash
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
 ```
