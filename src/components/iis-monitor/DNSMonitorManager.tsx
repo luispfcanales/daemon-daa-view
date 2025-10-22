@@ -28,21 +28,23 @@ import {
   Globe,
 } from 'lucide-react';
 import { dnsConfigService } from '@/services';
+import type { DNSConfigResponse, MonitoringControlResponse } from '@/types';
 
-// Tipos
-interface DNSMonitorItem {
-  dns: string;
-  expected_ip: string;
-  status: boolean;
+
+interface DNSControlProps {
+  controlDNS: MonitoringControlResponse | null;
 }
 
-const DNSMonitorManager: React.FC = () => {
-  const [domains, setDomains] = useState<DNSMonitorItem[]>([]);
+const DNSMonitorManager: React.FC<DNSControlProps> = ({
+  controlDNS,
+}) => {
+  const [domains, setDomains] = useState<DNSConfigResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingDomain, setEditingDomain] = useState<DNSMonitorItem | null>(null);
+  const [editingDomain, setEditingDomain] = useState<DNSConfigResponse | null>(null);
   const [formData, setFormData] = useState({
+    id: '',
     dns: '',
     expected_ip: '',
     status: true
@@ -75,6 +77,7 @@ const DNSMonitorManager: React.FC = () => {
   const handleAdd = () => {
     setEditingDomain(null);
     setFormData({
+      id: '',
       dns: '',
       expected_ip: '',
       status: true
@@ -82,9 +85,10 @@ const DNSMonitorManager: React.FC = () => {
     setModalOpen(true);
   };
 
-  const handleEdit = (domain: DNSMonitorItem) => {
+  const handleEdit = (domain: DNSConfigResponse) => {
     setEditingDomain(domain);
     setFormData({
+      id: domain.id,
       dns: domain.dns,
       expected_ip: domain.expected_ip,
       status: domain.status
@@ -100,20 +104,8 @@ const DNSMonitorManager: React.FC = () => {
 
     try {
       if (editingDomain) {
-        // Editar dominio existente
-        const response = await fetch(`/api/dns-monitor/${editingDomain.dns}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            dns: formData.dns,
-            expected_ip: formData.expected_ip,
-            status: formData.status
-          }),
-        });
-
-        if (response.ok) {
-          await handleDNSConfig();
-        }
+        await dnsConfigService.updateDomain(editingDomain.id, formData)
+        await handleDNSConfig();
       } else {
         await dnsConfigService.createDNSConfig(formData)
         await handleDNSConfig();
@@ -126,7 +118,7 @@ const DNSMonitorManager: React.FC = () => {
     }
   };
 
-  const handleDelete = async (domain: DNSMonitorItem) => {
+  const handleDelete = async (domain: DNSConfigResponse) => {
     if (!confirm('¿Estás seguro de eliminar este dominio?')) return;
 
     try {
@@ -215,7 +207,11 @@ const DNSMonitorManager: React.FC = () => {
                   className="pl-8"
                 />
               </div>
-              <Button onClick={handleAdd} className="flex items-center gap-2">
+              <Button
+                onClick={handleAdd}
+                className="flex items-center gap-2"
+                disabled={controlDNS?.is_running}
+              >
                 <Plus className="w-4 h-4" />
                 Agregar
               </Button>
@@ -263,6 +259,7 @@ const DNSMonitorManager: React.FC = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(domain)}
+                            disabled={controlDNS?.is_running}
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>
@@ -270,6 +267,7 @@ const DNSMonitorManager: React.FC = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDelete(domain)}
+                            disabled={controlDNS?.is_running}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

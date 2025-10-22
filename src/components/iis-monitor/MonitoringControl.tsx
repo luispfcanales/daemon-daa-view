@@ -29,7 +29,9 @@ const MonitoringControl: React.FC<MonitoringControlProps> = ({
 
   return (
     <div className="space-y-6">
-      <DNSMonitorManager />
+      <DNSMonitorManager
+        controlDNS={monitoringStatus}
+      />
 
       {/* Control del monitoreo */}
       <div className="flex items-center justify-between p-4 border rounded-lg">

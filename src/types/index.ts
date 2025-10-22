@@ -64,6 +64,7 @@ export interface MonitoringControlResponse {
 
 //dns types service
 export interface DNSConfigResponse {
+  id: string;
   dns: string;
   expected_ip: string;
   status: boolean;
