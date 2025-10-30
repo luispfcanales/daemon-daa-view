@@ -3,6 +3,7 @@ import type { MonitoringControlResponse } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Power } from 'lucide-react';
 import DNSMonitorManager from './DNSMonitorManager'
+import EmailConfigManager from './EmailConfigManager'
 import { monitoringService } from '@/services';
 
 interface MonitoringControlProps {
@@ -32,6 +33,7 @@ const MonitoringControl: React.FC<MonitoringControlProps> = ({
       <DNSMonitorManager
         controlDNS={monitoringStatus}
       />
+      <EmailConfigManager isConnected={!monitoringStatus?.is_running} />
 
       {/* Control del monitoreo */}
       <div className="flex items-center justify-between p-4 border rounded-lg">

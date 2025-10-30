@@ -95,3 +95,31 @@ export interface DNSStatsCachedEvent {
   };
   timestamp: string;
 }
+
+//manager email
+// Email Configuration Types
+export interface EmailConfig {
+  id?: string;
+  email: string;
+  gmail_app_password: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NotificationEmail {
+  id?: string;
+  email: string;
+  created_at?: string;
+}
+// Respuestas para el servicio de email
+export interface EmailConfigResponse {
+  success: boolean;
+  config?: EmailConfig;
+  message?: string;
+}
+
+export interface NotificationEmailsResponse {
+  success: boolean;
+  emails: NotificationEmail[];
+  message?: string;
+}
